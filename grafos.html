@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <title>Estados do Nordeste</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-image: url('nordeste.webp'); 
+            background-size: cover;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        // Dados do grafo
+        const initialNodes = {
+            MA: { x: 50, y: 150 }, // Maranhão
+            PI: { x: 150, y: 100 }, // Piauí
+            CE: { x: 250, y: 50 }, // Ceará
+            RN: { x: 150, y: 200 }, // Rio Grande do Norte
+            PB: { x: 300, y: 200 }, // Paraíba
+            PE: { x: 400, y: 100 }, // Pernambuco
+            AL: { x: 100, y: 300 }, // Alagoas
+            SE: { x: 250, y: 250 } // Sergipe
+        };
+
+        let nodes;
+        const edges = [
+            { start: 'MA', end: 'PI', weight: 2 },
+            { start: 'MA', end: 'CE', weight: 4 },
+            { start: 'PI', end: 'RN', weight: 1 },
+            { start: 'CE', end: 'RN', weight: 3 },
+            { start: 'CE', end: 'PB', weight: 2 },
+            { start: 'RN', end: 'PB', weight: 5 },
+            { start: 'PI', end: 'PE', weight: 3 },
+            { start: 'PB', end: 'PE', weight: 4 },
+            { start: 'RN', end: 'AL', weight: 2 },
+            { start: 'AL', end: 'SE', weight: 3 },
+            { start: 'PB', end: 'SE', weight: 2 },
+            { start: 'PB', end: 'PE', weight: 1 },
+            { start: 'CE', end: 'PI', weight: 2 }
+        ];
+
+        let startNode = null;
+        let endNode = null;
+
+        function setup() {
+            createCanvas(500, 400);
+            resetGraph();
+        }
+
+        function resetGraph() {
+            nodes = Object.assign({}, initialNodes); // Copia os nós iniciais para evitar modificação direta
+            randomizeEdges();
+        }
+
+        function randomizeEdges() {
+            for (let edge of edges) {
+                edge.weight = floor(random(1, 6)); // Randomizar pesos
+            }
+        }
+
+        function draw() {
+            background(255);
+
+            // Desenhar arestas como rotas
+            stroke(46, 204, 113);// Cor da linha verde claro
+            strokeWeight(2);//Espessura 2 pixes
+            for (let edge of edges) {
+                let start = nodes[edge.start];
+                let end = nodes[edge.end];
+                line(start.x, start.y, end.x, end.y);
+                // Adicionar peso ao desenho
+                let weightX = (start.x + end.x) / 2;
+                let weightY = (start.y + end.y) / 2;
+                fill(0);
+                text(edge.weight, weightX, weightY);//Adiciona peso na aresta
+            }
+
+            // Desenhar nós como estados
+            for (let node in nodes) {
+                fill(52, 152, 219);//Cor de preenchhimento azul claro
+                ellipse(nodes[node].x, nodes[node].y, 20, 20);//Desenha um circulo
+                fill(0);
+                text(node, nodes[node].x, nodes[node].y - 10);//Adiciona o nome em cima do circulo
+            }
+
+            // Destacar o caminho mais curto
+            if (startNode !== null && endNode !== null) {
+                let path = findShortestPath(startNode, endNode);
+                stroke(231, 76, 60);//Cor vermelho
+                strokeWeight(3);//Espessura 3 pixes
+                for (let i = 0; i < path.length - 1; i++) {
+                    let start = nodes[path[i]];
+                    let end = nodes[path[i + 1]];
+                    line(start.x, start.y, end.x, end.y);//Adiciona uma linha com o caminho mais curso
+                }
+            }
+        }
+
+        // Função para encontrar o caminho mais curto
+        function findShortestPath(start, end) {
+            const visited = {};//Objetos de nós
+            const distance = {};//Distância entre origem e destino
+            const previous = {};//Objeto de nós anteriores
+            const queue = [];//fila de Nòs processados
+
+            for (let node in nodes) {
+                distance[node] = Infinity;//Distância infinita para os nós
+                previous[node] = null;
+            }
+
+            distance[start] = 0;//Distância 0 para nó inicial
+            queue.push({ node: start, dist: 0 });
+
+            while (queue.length > 0) {
+                queue.sort((a, b) => a.dist - b.dist);
+                const current = queue.shift().node;//Retira o nó de menor distância
+
+                if (!visited[current]) {
+                    visited[current] = true;
+
+                    for (let edge of edges) {
+                        if (edge.start === current) {//Nó de origem e nó atual
+                            const neighbor = edge.end;
+                            const alt = distance[current] + edge.weight;//Distancia + peso
+                            if (alt < distance[neighbor]) {
+                                distance[neighbor] = alt;
+                                previous[neighbor] = current;
+                                queue.push({ node: neighbor, dist: alt });
+                            }
+                        } else if (edge.end === current) {
+                            const neighbor = edge.start;
+                            const alt = distance[current] + edge.weight;
+                            if (alt < distance[neighbor]) {
+                                distance[neighbor] = alt;
+                                previous[neighbor] = current;
+                                queue.push({ node: neighbor, dist: alt });
+                            }
+                        }
+                    }
+                }
+            }
+
+            let path = [];//Array que armazena o caminho mais curto
+            let current = end;
+            while (current !== null) {
+                path.unshift(current);//Adiciona o nó atual ao inicio do array
+                current = previous[current];//Retrocede o caminho anterior
+            }
+
+            return path;//Retorna o array com o caminho mais curto
+        }
+
+        // Função chamada quando um estado é clicado
+        function mouseClicked() {
+            for (let node in nodes) {
+                let nodePos = nodes[node];
+                if (dist(mouseX, mouseY, nodePos.x, nodePos.y) < 10) {
+                    if (startNode === null) {
+                        startNode = node;//Nó de origem
+                    } else if (endNode === null) {
+                        endNode = node;//Nó de destino
+                    } else {
+                        startNode = node;
+                        endNode = null;
+                    }
+                    break;
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
